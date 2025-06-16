@@ -134,8 +134,7 @@ def drive_forward_stepwise(target_x, target_y, speed=forward_speed * 0.5):
     left_motor.setVelocity(speed)
     right_motor.setVelocity(speed)
     return False
-
-# Main loop
+#jj
 while robot.step(timestep) != -1:
     publish_position()
     on_message()
