@@ -39,7 +39,7 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     try:
         data = json.loads(msg.payload.decode())
-        print(f"Received message on topic {msg.topic}: {data}")
+        print(f"Received message on topic {data}")
         if msg.topic == "robot_pos/all":
             puck_pos_dict.update(data)
         if msg.topic == "robots/all":
@@ -83,25 +83,8 @@ def update_neighbor_data(data):
         if rid not in in_range:
             del puck_dict[rid]
 
-def publish_data():
-    x, y, angle = get_position()
-    if x is not None and y is not None:
-        packet= json.dumps({
-                pi_puck_id: {
-                    "x": x,
-                    "y": y,
-                    "angle": angle,
-                    "sensors": {
-                        "temperature": random.randint(0,50),
-                        "humidity": random.randint(0,100),
-                        "light": random.randint(0,100)
-                    },
-                    "target_found": False,
-                }
-            })
-        client.publish("robots/all", json.dumps(packet))
-    else:
-        print("Position data not available.")
+def publish_data(packet):
+    client.publish("robots/all", json.dumps(packet))
 
 def drive_forward_stepwise(tx, ty, spd=forward_speed):
     global start_position
@@ -215,11 +198,26 @@ sweep_direction = 1  # 1=right, -1=left
 try:
     for _ in range(1000):
         # TODO: Do your stuff here
-        print(f'puck_dict: {puck_pos_dict}')
-        publish_data()
+        x, y, angle = get_position()
+        if x is not None and y is not None:
+            publish_data({
+                pi_puck_id: {
+                    "x": x,
+                    "y": y,
+                    "angle": angle,
+                    "sensors": {
+                        "temperature": random.randint(0,50),
+                        "humidity": random.randint(0,100),
+                        "light": random.randint(0,100)
+                    },
+                    "target_found": False,
+                    #"ready": ready
+                }
+            })
+        else:
+            print("Position data not available.")
 
         all_ids = sorted(list(puck_dict.keys()) + [pi_puck_id], key=extract_int)
-        x, y, angle = get_position()
 
         if spacing is None and len(all_ids) > 0:
             spacing = min(max_range * 0.9, ArenaMaxY / len(all_ids))
