@@ -275,10 +275,7 @@ try:
             print("Position data not available.")
         set_leader()
         
-        all_ids = sorted(list(puck_dict.keys()) + [pi_puck_id], key=extract_int)
-        
-        if spacing is None and len(all_ids) > 0:
-            spacing = min(max_range * 0.9, ArenaMaxY / len(all_ids))
+
         
         if current_state == STATE_START:
             print("Starting state...")
@@ -286,11 +283,10 @@ try:
                 start_waiting -= 1
             else:
                 puck_keys = sorted(puck_dict.keys())
-                print(f"Sorted keys of puck_dict: {puck_keys}")
-                my_index = puck_keys.index(pi_puck_id) if pi_puck_id in puck_keys else -1
-                print(f"My position in sorted list: {my_index}")
-                target_y += my_index * 0.5  # Offset y position based on index
-                print(f"Target position set to: ({target_x}, {target_y})")
+                all_ids = sorted(list(puck_dict.keys()) + [pi_puck_id], key=extract_int)
+                
+                if spacing is None and len(all_ids) > 0:
+                    spacing = min(max_range * 0.9, ArenaMaxY / len(all_ids))
                 current_state = STATE_WAIT_FOR_NEIGHBORS
         elif current_state == STATE_WAIT_FOR_NEIGHBORS:
             if len(all_ids) < 0:
