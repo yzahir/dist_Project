@@ -8,7 +8,7 @@ import math
 # Define variables and callbacks
 Broker = "192.168.178.56"  # Replace with your broker address
 Port = 1883 # standard MQTT port
-pi_puck_id = '44'
+pi_puck_id = '7'
 
 x = 0.0
 y = 0.0
@@ -200,7 +200,7 @@ sweep_direction = 1  # 1=right, -1=left
 try:
     for _ in range(1000):
         # TODO: Do your stuff here
-        print(f'puck_dict: {puck_dict}')
+        print(f'puck_dict: {puck_pos_dict}')
         publish_data()
 
         all_ids = sorted(list(puck_dict.keys()) + [pi_puck_id], key=extract_int)
@@ -214,7 +214,7 @@ try:
             current_state = STATE_WAIT_FOR_NEIGHBORS
 
         elif current_state == STATE_WAIT_FOR_NEIGHBORS:
-            if len(all_ids) < 1:
+            if len(all_ids) < 0:
                 continue
             role      = "LEADER" if int(pi_puck_id)==min(map(int,all_ids)) else "FOLLOWER"
             idx       = all_ids.index(pi_puck_id)
