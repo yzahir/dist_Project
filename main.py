@@ -9,7 +9,7 @@ import socket
 # Define variables and callbacks
 Broker = "192.168.178.56"  # Replace with your broker address
 Port = 1883 # standard MQTT port
-pi_puck_id = socket.gethostname().replace("pi-puck", "") if socket.gethostname().startswith("pi-puck") else '17'
+pi_puck_id = socket.gethostname().replace("pi-puck", "") if socket.gethostname().startswith("pi-puck") else '18'
 max_range = 0.3
 x = 0.0
 y = 0.0
@@ -157,7 +157,8 @@ def move_to(target_x, target_y):
 
     print(f"Moved to target position: ({target_x}, {target_y}) from ({current_x}, {current_y})")
 
-
+def extract_int(s):     return int(''.join(filter(str.isdigit, s)))
+def normalize_angle_deg(a): return a % 360
 def rotate_to_target():
     print(f'Rotating to target position: ({target_x}, {target_y})')
     angle1 = math.degrees(math.atan2(target_y - y, target_x - x))
