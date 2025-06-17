@@ -41,7 +41,7 @@ def on_message(client, userdata, msg):
         data = json.loads(msg.payload.decode())
         if msg.topic == "robot_pos/all":
             puck_pos_dict.update(data)
-            print(f"Received message on topic {puck_pos_dict}")
+            #print(f"Received message on topic {puck_pos_dict}")
         #if msg.topic == "robots/all":
             x_self, y_self, _ = get_position()
             in_range = set()
@@ -199,7 +199,7 @@ try:
     for _ in range(1000):
         time.sleep(1)
         # TODO: Do your stuff here
-        print(f"puck_pos_dict: {puck_pos_dict}")
+        #print(f"puck_pos_dict: {puck_pos_dict}")
         x, y, angle = get_position()
         print(f"[{pi_puck_id}] Position: ({x:.2f}, {y:.2f}), Angle: {angle:.2f}")
         if x is not None and y is not None:
