@@ -52,7 +52,8 @@ def on_message(client, userdata, msg):
         data = json.loads(msg.payload.decode())
         print(f"Received message on topic {data}")
         if msg.topic == "robot_pos/all":
-            puck_pos_dict.update(data)
+            for robot_id, robot_data in data.items():
+                puck_pos_dict[robot_id] = robot_data
 
 
         if msg.topic == "robots/all":
