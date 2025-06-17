@@ -192,7 +192,7 @@ target_y      = None
 start_position = None
 
 # Row-sweeping globals
-rowY      = None
+rowY      = 0.1
 spacing   = None
 sweep_direction = 1  # 1=right, -1=left
 try:
