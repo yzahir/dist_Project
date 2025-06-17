@@ -9,7 +9,7 @@ import socket
 # Define variables and callbacks
 Broker = "192.168.178.56"  # Replace with your broker address
 Port = 1883 # standard MQTT port
-pi_puck_id = socket.gethostname().replace("pi-puck", "") if socket.gethostname().startswith("pi-puck") else '7'
+pi_puck_id = socket.gethostname().replace("pi-puck", "") if socket.gethostname().startswith("pi-puck") else '17'
 max_range = 0.3
 x = 0.0
 y = 0.0
@@ -290,6 +290,7 @@ try:
                     spacing = min(max_range * 0.9, ArenaMaxY / len(all_ids))
                 current_state = STATE_WAIT_FOR_NEIGHBORS
         elif current_state == STATE_WAIT_FOR_NEIGHBORS:
+            print(f"Waiting for neighbors... {len(puck_dict)} found.")
             if len(all_ids) < 0:
                 continue
             role      = "LEADER" if int(pi_puck_id)==min(map(int,all_ids)) else "FOLLOWER"
