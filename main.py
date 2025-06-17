@@ -198,7 +198,9 @@ sweep_direction = 1  # 1=right, -1=left
 try:
     for _ in range(1000):
         # TODO: Do your stuff here
+        print(f"puck_pos_dict: {puck_pos_dict}")
         x, y, angle = get_position()
+        print(f"[{pi_puck_id}] Position: ({x:.2f}, {y:.2f}), Angle: {angle:.2f}")
         if x is not None and y is not None:
             publish_data({
                 pi_puck_id: {
