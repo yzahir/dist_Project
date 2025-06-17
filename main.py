@@ -197,6 +197,7 @@ spacing   = None
 sweep_direction = 1  # 1=right, -1=left
 try:
     for _ in range(1000):
+        time.sleep(1)
         # TODO: Do your stuff here
         print(f"puck_pos_dict: {puck_pos_dict}")
         x, y, angle = get_position()
