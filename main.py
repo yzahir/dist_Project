@@ -4,30 +4,41 @@ import time
 from pipuck.pipuck import PiPuck
 import random
 import math
+import socket
 
 # Define variables and callbacks
 Broker = "192.168.178.56"  # Replace with your broker address
 Port = 1883 # standard MQTT port
-pi_puck_id = '7'
-
+pi_puck_id = socket.gethostname().replace("pi-puck", "") if socket.gethostname().startswith("pi-puck") else '17'
+max_range = 0.3
 x = 0.0
 y = 0.0
+angle = 0.0
+is_leader = False
+target_x = 0.1
+target_y = 0.1
+ready = False
+forward_speed=500
+rotation_speed=300
+wheel_step_to_cm = 0.01288  # 1 step ≈ 0.01288 cm
+axle_radius_cm = 2.65       # 53 mm between wheels → r = 2.65 cm
 
 # Arena parameters
 StartX     = 0.1
 SweepEndX  = 1.9   # 2m arena minus 0.1 margin
 ArenaMaxY  = 1.0
 
-# Constants
-forward_speed = 6.28
-turn_speed    = 3.14
-max_range     = 0.3
-wheel_step_to_cm = 0.01288  # 1 step ≈ 0.01288 cm
-axle_radius_cm = 2.65       # 53 mm between wheels → r = 2.65 cm
-
 puck_pos_dict = {}
 puck_dict = {}
 
+def distance(x1, y1, x2, y2):
+    return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+def remove_out_of_range_robots(puck_dict, robots_in_range):
+    to_remove = [rid for rid in puck_dict if rid not in robots_in_range]
+    for robot_id in to_remove:
+        del puck_dict[robot_id]
+        print(f'Removed Robot {robot_id} is no longer in range')
 
 # function to handle connection
 def on_connect(client, userdata, flags, rc):
@@ -39,87 +50,116 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     try:
         data = json.loads(msg.payload.decode())
+
         if msg.topic == "robot_pos/all":
             puck_pos_dict.update(data)
-            print(f"Received message on topic {puck_pos_dict}")
-        #if msg.topic == "robots/all":
+
+        if msg.topic == "robots/all":
             x_self, y_self, _ = get_position()
-            in_range = set()
             for robot_id, robot_data in data.items():
-                if robot_id == pi_puck_id: 
-                    continue
-                msg_x, msg_y = robot_data.get("x"), robot_data.get("y")
-                
-                if dist(x_self, y_self, msg_x, msg_y) < max_range:
+                # if robot_id == pi_puck_id:
+                #     continue  
+                msg_x = robot_data.get("x")
+                msg_y = robot_data.get("y")
+
+                dist = distance(x_self, y_self, msg_x, msg_y)
+                if dist < max_range:
                     puck_dict[robot_id] = robot_data
-                    in_range.add(robot_id)
-            for rid in list(puck_dict.keys()):
-                if rid not in in_range:
-                    del puck_dict[rid]            
-            #update_neighbor_data(data) 
 
     except json.JSONDecodeError:
         print(f'invalid json: {msg.payload}')
 
 
-# Helpers
-def normalize_angle_deg(a): return a % 360
-def extract_int(s):     return int(''.join(filter(str.isdigit, s)))
-def dist(x1, y1, x2, y2):
-    return math.hypot(x2 - x1, y2 - y1)
+        print(f'invalid json: {msg.payload}')
 
-def update_neighbor_data(data):
-    global puck_dict
-    x_self, y_self, _ = get_position()
-    in_range = set()
-    for rid, info in data.items():
-        if rid == pi_puck_id: 
-            continue
-        rx, ry = info.get("x"), info.get("y")
-        if dist(x_self, y_self, rx, ry) < max_range:
-            puck_dict[rid] = info
-            in_range.add(rid)
-    for rid in list(puck_dict.keys()):
-        if rid not in in_range:
-            del puck_dict[rid]
+# Initialize MQTT client
+client = mqtt.Client()
+client.on_connect = on_connect
+client.on_message = on_message
+
+client.connect(Broker, Port, 60)
+
+client.loop_start() # Start listening loop in separate thread
+
+# Initialize the PiPuck
+pipuck = PiPuck(epuck_version=2)
+
+# Set the robot's speed, e.g. with
+#pipuck.epuck.set_motor_speeds(1000,-1000)
+
+def get_position(id=pi_puck_id):
+    global x, y
+
+    data = puck_pos_dict.get(id)
+    if data:
+        pos = data.get('position')
+        if pos:
+            x = pos[0]
+            y = pos[1]
+            angle = data.get('angle')
+            return x, y, angle
+    else:
+        print(f"No data for PiPuck ID: {id}")
+    return None, None, None
 
 def publish_data(packet):
     client.publish("robots/all", json.dumps(packet))
 
-def drive_forward_stepwise(tx, ty, spd=forward_speed):
-    global start_position
-    x,y,_ = get_position()
-    if start_position is None:
-        start_position = (x,y)
-    d = dist(x,y,tx,ty)
-    print(f"[{pi_puck_id}] Driving→ ({x:.2f},{y:.2f})→({tx:.2f},{ty:.2f}) d={d:.3f}")
-    if d < 0.05:
-        pipuck.epuck.set_motor_speeds(0, 0)
-        start_position = None
-        return True
-    pipuck.epuck.set_motor_speeds(spd, spd)
-    return False
+def set_leader():
+    global is_leader
+    try:
+        is_leader = all(pi_puck_id <= rid for rid in puck_dict.keys())
+        if is_leader:
+            print(f"PiPuck {pi_puck_id} is the leader.")
+        #     # pipuck.epuck.set_leds_colour("green")
+        # else:
+        #     # pipuck.epuck.set_leds_colour("red")
+    except ValueError:
+        print("No PiPucks available to determine leader.")
+        is_leader = False
+        # pipuck.epuck.set_leds_colour("red")
+    
 
-def rotate_to_target_stepwise(x, y, ang, tx, ty, thresh=3.0):
-    dx = tx - x
-    dy = ty - y
-    angle1 = math.degrees(math.atan2(dy, dx))
-    targ_ang = (-angle1 + 90) % 360
+def move_to(target_x, target_y):
+    current_x, current_y, angle = get_position()
+    print(f"Current position: ({current_x}, {current_y}), angle: {angle}")
+    if current_x is None or current_y is None or angle is None:
+        print("Current position or angle not available.")
+        return
 
-    diff = (targ_ang - ang + 540) % 360 - 180
-    print(f"[{pi_puck_id}] Rotating→ T:{targ_ang:.1f} C:{ang:.1f} Δ:{diff:.1f}")
-    if abs(diff) < thresh:
-        pipuck.epuck.set_motor_speeds(0, 0)
-        return True
-    spd = max(min(0.05*diff, turn_speed), 100)
-    if diff > 0:
-        pipuck.epuck.set_motor_speeds(spd, -spd)
+    dx = target_x - current_x
+    dy = target_y - current_y
+    distance_to_target = math.sqrt(dx**2 + dy**2)
+    angle_to_target = math.degrees(math.atan2(dy, dx)) 
+
+    angle_diff = (angle_to_target - angle + 180) % 360 - 180
+
+    # Calculate angular speed in deg/sec
+    wheel_speed_cm_s = rotation_speed * wheel_step_to_cm
+    angular_speed_deg_s = (wheel_speed_cm_s / axle_radius_cm) * (180 / math.pi)
+
+
+    # Rotate
+    rotation_time = abs(angle_diff) / angular_speed_deg_s
+    if angle_diff > 0:
+        pipuck.epuck.set_motor_speeds(-rotation_speed, rotation_speed)  
     else:
-        pipuck.epuck.set_motor_speeds(-spd, spd)
-    #pipuck.epuck.set_motor_speeds(spd if diff>0 else -spd,-spd if diff>0 else spd)
-    return False
+        pipuck.epuck.set_motor_speeds(rotation_speed, -rotation_speed)  
+    time.sleep(rotation_time)
+    pipuck.epuck.set_motor_speeds(0, 0)  
+
+    # Move forward
+    linear_speed_cm_s = forward_speed * wheel_step_to_cm
+    move_time = (distance_to_target * 100) / linear_speed_cm_s  # m → cm
+    pipuck.epuck.set_motor_speeds(forward_speed, forward_speed)
+    time.sleep(move_time)
+    pipuck.epuck.set_motor_speeds(0, 0)  # Stop
+
+    print(f"Moved to target position: ({target_x}, {target_y}) from ({current_x}, {current_y})")
+
 
 def rotate_to_target():
+    print(f'Rotating to target position: ({target_x}, {target_y})')
     angle1 = math.degrees(math.atan2(target_y - y, target_x - x))
     # now get the angle from the y-axis to the target
     target_angle = (-angle1 + 90) % 360
@@ -138,39 +178,53 @@ def rotate_to_target():
         else:
             pipuck.epuck.set_motor_speeds(-turn_speed, turn_speed)
         return STATE_START_ROTATE
+
+def drive_forward_stepwise(tx, ty, spd=forward_speed):
+    global start_position
+    x,y,_ = get_position()
+    if start_position is None:
+        start_position = (x,y)
+    d = distance(x,y,tx,ty)
+    print(f"[{pi_puck_id}] Driving→ ({x:.2f},{y:.2f})→({tx:.2f},{ty:.2f}) d={d:.3f}")
+    if d < 0.05:
+        pipuck.epuck.set_motor_speeds(0, 0)
+        start_position = None
+        return True
+    pipuck.epuck.set_motor_speeds(spd, spd)
+    return False
     
-# Initialize MQTT client
-client = mqtt.Client()
-client.on_connect = on_connect
-client.on_message = on_message
+def rotate_to_angle(target_angle):
+    angle_diff = (target_angle - angle + 540) % 360 - 180
+    turn_speed = max(5 * abs(angle_diff), 100)
+    if not (target_angle > angle + 5 or target_angle < angle - 5):
+        # Move towards the target
+        pipuck.epuck.set_motor_speeds(0, 0)
+        #return STATE_START_WAIT
+    if angle_diff > 0:
+        pipuck.epuck.set_motor_speeds(turn_speed, -turn_speed)
+    else:
+        pipuck.epuck.set_motor_speeds(-turn_speed, turn_speed)
+    return STATE_ROTATE_TO_90
 
-client.connect(Broker, Port, 60)
+def rotate_to_target_stepwise(x, y, ang, tx, ty, thresh=3.0):
+    dx = tx - x
+    dy = ty - y
+    angle1 = math.degrees(math.atan2(dy, dx))
+    targ_ang = (-angle1 + 90) % 360
 
-client.loop_start() # Start listening loop in separate thread
-
-# Initialize the PiPuck
-pipuck = PiPuck(epuck_version=2)
-
-# Set the robot's speed, e.g. with
-#pipuck.epuck.set_motor_speeds(1000,-1000)
-
-def get_position(id=pi_puck_id):
-    data = puck_pos_dict.get(id)
-    if not data:
-        print(f"No data for PiPuck ID: {id}")
-        return None, None, None
-    # read the keys you actually publish:
-    x = data.get("x")
-    y = data.get("y")
-    angle = data.get("angle")
-    if x is None or y is None or angle is None:
-        print("Incomplete data:", data)
-        return None, None, None
-    return x, y, angle
-
-
-
-
+    diff = (targ_ang - ang + 540) % 360 - 180
+    print(f"[{pi_puck_id}] Rotating→ T:{targ_ang:.1f} C:{ang:.1f} Δ:{diff:.1f}")
+    if abs(diff) < thresh:
+        pipuck.epuck.set_motor_speeds(0, 0)
+        return True
+    spd = max(min(0.05*diff, rotation_speed), 100)
+    if diff > 0:
+        pipuck.epuck.set_motor_speeds(spd, -spd)
+    else:
+        pipuck.epuck.set_motor_speeds(-spd, spd)
+    #pipuck.epuck.set_motor_speeds(spd if diff>0 else -spd,-spd if diff>0 else spd)
+    return False
+    
 # States
 STATE_START         = 0
 STATE_WAIT_FOR_NEIGHBORS = 1
@@ -183,7 +237,7 @@ STATE_ADVANCE_ROW   = 7
 STATE_ROW_ROTATE    = 8
 STATE_ROW_DRIVE     = 9
 STATE_DONE          = 10
-
+STATE_ROTATE_TO_90  = 11
 
 current_state = STATE_START
 role          = "UNKNOWN"
@@ -195,13 +249,13 @@ start_position = None
 rowY      = None
 spacing   = None
 sweep_direction = 1  # 1=right, -1=left
+start_waiting = 50
 try:
     for _ in range(1000):
-        time.sleep(1)
         # TODO: Do your stuff here
-        print(f"puck_pos_dict: {puck_pos_dict}")
+        # print(f'puck_dict: {puck_dict}')
+        # print(f'target_x: {target_x}, target_y: {target_y}')
         x, y, angle = get_position()
-        print(f"[{pi_puck_id}] Position: ({x:.2f}, {y:.2f}), Angle: {angle:.2f}")
         if x is not None and y is not None:
             publish_data({
                 pi_puck_id: {
@@ -214,21 +268,21 @@ try:
                         "light": random.randint(0,100)
                     },
                     "target_found": False,
-                    #"ready": ready
+                    "ready": ready
                 }
             })
         else:
             print("Position data not available.")
-
+        set_leader()
+        
         all_ids = sorted(list(puck_dict.keys()) + [pi_puck_id], key=extract_int)
-
+        
         if spacing is None and len(all_ids) > 0:
             spacing = min(max_range * 0.9, ArenaMaxY / len(all_ids))
-
+        
         if current_state == STATE_START:
-            print("Waiting for neighbors...")
+            print("Starting state...")
             current_state = STATE_WAIT_FOR_NEIGHBORS
-
         elif current_state == STATE_WAIT_FOR_NEIGHBORS:
             if len(all_ids) < 0:
                 continue
@@ -238,7 +292,7 @@ try:
             target_y  = rowY + idx*spacing
             print(f"I am {role} idx={idx}, lineY={rowY:.2f}, target=({target_x:.2f},{target_y:.2f})")
             current_state = STATE_START_ROTATE
-
+                        
         elif current_state == STATE_START_ROTATE:
             if rotate_to_target_stepwise(x,y,angle,target_x,target_y):
                 current_state = STATE_START_DRIVE
@@ -285,7 +339,8 @@ try:
             time.sleep(0.1)
             break
         
-
+             
+            
 
 except KeyboardInterrupt:
     print("Interrupt detected!!")
