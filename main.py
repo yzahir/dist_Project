@@ -87,17 +87,18 @@ def publish_data():
     x, y, angle = get_position()
     if x is not None and y is not None:
         packet= json.dumps({
-            pi_puck_id: {
-                "x": x,
-                "y": y,
-                "angle": angle,
-                "sensors": {
-                    "temperature": random.randint(0,50),
-                    "humidity": random.randint(0,100),
-                    "light": random.randint(0,100)
+                pi_puck_id: {
+                    "x": x,
+                    "y": y,
+                    "angle": angle,
+                    "sensors": {
+                        "temperature": random.randint(0,50),
+                        "humidity": random.randint(0,100),
+                        "light": random.randint(0,100)
+                    },
+                    "target_found": False,
                 }
-            }
-        })
+            })
         client.publish("robots/all", json.dumps(packet))
     else:
         print("Position data not available.")
@@ -171,19 +172,19 @@ pipuck = PiPuck(epuck_version=2)
 #pipuck.epuck.set_motor_speeds(1000,-1000)
 
 def get_position(id=pi_puck_id):
-    global x, y
-
     data = puck_pos_dict.get(id)
-    if data:
-        pos = data.get('position')
-        if pos:
-            x = pos[0]
-            y = pos[1]
-            angle = data.get('angle')
-            return x, y, angle
-    else:
+    if not data:
         print(f"No data for PiPuck ID: {id}")
-    return None, None, None
+        return None, None, None
+    # read the keys you actually publish:
+    x = data.get("x")
+    y = data.get("y")
+    angle = data.get("angle")
+    if x is None or y is None or angle is None:
+        print("Incomplete data:", data)
+        return None, None, None
+    return x, y, angle
+
 
 
 
