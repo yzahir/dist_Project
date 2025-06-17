@@ -50,10 +50,10 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     try:
         data = json.loads(msg.payload.decode())
-
+        print(f"Received message on topic {data}")
         if msg.topic == "robot_pos/all":
             puck_pos_dict.update(data)
-            print(f"Received message on topic {msg.topic}: {puck_pos_dict}")
+
 
         if msg.topic == "robots/all":
             x_self, y_self, _ = get_position()
