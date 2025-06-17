@@ -43,7 +43,20 @@ def on_message(client, userdata, msg):
         if msg.topic == "robot_pos/all":
             puck_pos_dict.update(data)
         if msg.topic == "robots/all":
-                update_neighbor_data(data) 
+            x_self, y_self, _ = get_position()
+            in_range = set()
+            for robot_id, robot_data in data.items():
+                if robot_id == pi_puck_id: 
+                    continue
+                msg_x, msg_y = robot_data.get("x"), robot_data.get("y")
+                
+                if dist(x_self, y_self, msg_x, msg_y) < max_range:
+                    puck_dict[robot_id] = robot_data
+                    in_range.add(robot_id)
+            for rid in list(puck_dict.keys()):
+                if rid not in in_range:
+                    del puck_dict[rid]            
+            #update_neighbor_data(data) 
 
     except json.JSONDecodeError:
         print(f'invalid json: {msg.payload}')
@@ -60,7 +73,8 @@ def update_neighbor_data(data):
     x_self, y_self, _ = get_position()
     in_range = set()
     for rid, info in data.items():
-        if rid == pi_puck_id: continue
+        if rid == pi_puck_id: 
+            continue
         rx, ry = info.get("x"), info.get("y")
         if dist(x_self, y_self, rx, ry) < max_range:
             puck_dict[rid] = info
