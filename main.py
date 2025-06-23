@@ -74,9 +74,6 @@ def on_message(client, userdata, msg):
     except json.JSONDecodeError:
         print(f'invalid json: {msg.payload}')
 
-
-        print(f'invalid json: {msg.payload}')
-
 # Initialize MQTT client
 client = mqtt.Client()
 client.on_connect = on_connect
@@ -221,6 +218,7 @@ start_waiting = 50
 try:
     for _ in range(1000):
         # TODO: Do your stuff here
+        time.sleep(0.1)
         print(f'puck_dict: {puck_dict}')
         # print(f'target_x: {target_x}, target_y: {target_y}')
         x, y, angle = get_position()
