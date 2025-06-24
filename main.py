@@ -240,7 +240,7 @@ try:
         else:
             print("Position data not available.")
             
-        all_ids    = sorted(list(puck_dict.keys())+[pi_puck_id], key=extract_int)
+        all_ids = sorted(list(set(puck_dict.keys()) | {pi_puck_id}), key=extract_int)
                 
         if spacing is None and len(all_ids) >= 2:
             spacing = min(max_range*0.9, ArenaMaxY/len(all_ids))
