@@ -242,23 +242,30 @@ try:
             
         all_ids = sorted(list(set(puck_dict.keys()) | {pi_puck_id}), key=extract_int)
                 
-        if spacing is None and len(all_ids) >= 2:
-            spacing = min(max_range*0.9, ArenaMaxY/len(all_ids))
-            rowY    = 0.1
-            total_sweeps = math.ceil(ArenaMaxY / spacing)
-            sweeps_per_rbt = math.ceil(total_sweeps / len(all_ids))
-        
+        #if spacing is None and len(all_ids) >= 2:
+        #    spacing = min(max_range*0.9, ArenaMaxY/len(all_ids))
+        #    rowY    = 0.1
+        #    total_sweeps = math.ceil(ArenaMaxY / spacing)
+        #    sweeps_per_rbt = math.ceil(total_sweeps / len(all_ids))
+        #    print(f"total_sweeps: {total_sweeps}, sweeps_per_rbt: {sweeps_per_rbt}, spacing: {spacing}")
 
         if current_state == STATE_START:
             print("Starting state...")
             current_state = STATE_WAIT_FOR_NEIGHBORS
-                
+
         elif current_state == STATE_WAIT_FOR_NEIGHBORS:
             print(f"Waiting for neighbors... {len(puck_dict)} found.")
             if len(all_ids) < 2:
                 current_state = STATE_START
                 continue
             else:
+                if spacing is None and len(all_ids) >= 1:
+                    spacing = min(max_range*0.9, ArenaMaxY/len(all_ids))
+                    rowY    = 0.1
+                    total_sweeps = math.ceil(ArenaMaxY / spacing)
+                    sweeps_per_rbt = math.ceil(total_sweeps / len(all_ids))
+                    print(f"total_sweeps: {total_sweeps}, sweeps_per_rbt: {sweeps_per_rbt}, spacing: {spacing}")
+                    
                 role      = "LEADER" if int(pi_puck_id)==min(map(int,all_ids)) else "FOLLOWER"
                 idx       = all_ids.index(pi_puck_id)
                 target_x  = StartX
@@ -336,4 +343,3 @@ finally:
 # Stop the MQTT client loop
 pipuck.epuck.set_motor_speeds(0,0)
 client.loop_stop()  
-
