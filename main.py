@@ -242,7 +242,7 @@ try:
             
         all_ids    = sorted(list(puck_dict.keys())+[pi_puck_id], key=extract_int)
                 
-        if spacing is None and len(all_ids) >= 1:
+        if spacing is None and len(all_ids) >= 2:
             spacing = min(max_range*0.9, ArenaMaxY/len(all_ids))
             rowY    = 0.1
             total_sweeps = math.ceil(ArenaMaxY / spacing)
@@ -256,14 +256,15 @@ try:
         elif current_state == STATE_WAIT_FOR_NEIGHBORS:
             print(f"Waiting for neighbors... {len(puck_dict)} found.")
             if len(all_ids) < 2:
-                current_state == STATE_START
+                current_state = STATE_START
                 continue
-            role      = "LEADER" if int(pi_puck_id)==min(map(int,all_ids)) else "FOLLOWER"
-            idx       = all_ids.index(pi_puck_id)
-            target_x  = StartX
-            target_y  = rowY + idx*spacing
-            print(f"I am {role} idx={idx}, lineY={rowY:.2f}, target=({target_x:.2f},{target_y:.2f})")
-            current_state = STATE_START_ROTATE
+            else:
+                role      = "LEADER" if int(pi_puck_id)==min(map(int,all_ids)) else "FOLLOWER"
+                idx       = all_ids.index(pi_puck_id)
+                target_x  = StartX
+                target_y  = rowY + idx*spacing
+                print(f"I am {role} idx={idx}, lineY={rowY:.2f}, target=({target_x:.2f},{target_y:.2f})")
+                current_state = STATE_START_ROTATE
                         
         elif current_state == STATE_START_ROTATE:
             print(f"{pi_puck_id} STATE_START_ROTATE at Y={target_y:.2f}, direction={sweep_direction}")
