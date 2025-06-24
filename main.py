@@ -255,7 +255,8 @@ try:
                 
         elif current_state == STATE_WAIT_FOR_NEIGHBORS:
             print(f"Waiting for neighbors... {len(puck_dict)} found.")
-            if len(all_ids) < 0:
+            if len(all_ids) < 2:
+                current_state == STATE_START
                 continue
             role      = "LEADER" if int(pi_puck_id)==min(map(int,all_ids)) else "FOLLOWER"
             idx       = all_ids.index(pi_puck_id)
