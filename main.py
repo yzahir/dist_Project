@@ -7,6 +7,10 @@ import math
 import socket
 import threading
 from collections import defaultdict
+from pipuck.epuck2 import EPuck2
+
+epuck2 = EPuck2()
+
 
 # Define variables and callbacks
 Broker = "192.168.178.56"  # Replace with your broker address
@@ -237,11 +241,11 @@ spacing   = None
 sweep_direction = 1  # 1=right, -1=left
 start_waiting = 50
 
-pipuck.epuck.enable_ir_sensors(True)
+epuck2.enable_ir_sensors(True)
 try:
     for _ in range(1000):
         # TODO: Do your stuff here
-        reflected_values = pipuck.epuck.get_ir_reflected()[1]
+        reflected_values = epuck2.get_ir_reflected()[1]
         print(f"IR reflected values: {reflected_values}")
         time.sleep(0.1)
         print(f'puck_dict: {puck_dict}')
