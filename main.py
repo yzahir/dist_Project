@@ -241,12 +241,18 @@ spacing   = None
 sweep_direction = 1  # 1=right, -1=left
 start_waiting = 50
 
-epuck2.enable_ir_sensors(True)
+#epuck2.enable_ir_sensors(True)
 try:
     for _ in range(1000):
         # TODO: Do your stuff here
-        reflected_values = epuck2.get_ir_reflected()[1]
-        print(f"IR reflected values: {reflected_values}")
+        print("Reading e-puck infrared values...")
+        pipuck.epuck.enable_ir_sensors(True)
+        time.sleep(0.1)
+        print("  Ambient:", list(pipuck.epuck.ir_ambient))
+        print("Reflected:", list(pipuck.epuck.ir_reflected))
+        pipuck.epuck.enable_ir_sensors(False)
+        #print(f"IR reflected values: {reflected_values}")
+        
         time.sleep(0.1)
         print(f'puck_dict: {puck_dict}')
         # print(f'target_x: {target_x}, target_y: {target_y}')
